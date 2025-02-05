@@ -117,4 +117,9 @@ TEST_CASE("check wu et al. example sequential correctness") {
     checkCorrectness(output);
 }
 
-TEST_CASE("check wu et al. example parallel correctness") {}
+TEST_CASE("check wu et al. example parallel correctness") {
+    const cv::Mat example{integralImageInputExampleWuEtAl()};
+    const cv::Mat output{computeIIParallel(example)};
+    std::cout << output << std::endl;
+    ///checkCorrectness(output);
+}
