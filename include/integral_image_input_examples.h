@@ -1,0 +1,8 @@
+#ifndef ZEISS_TASK_INTEGRAL_IMAGE_INPUT_EXAMPLES_H
+#define ZEISS_TASK_INTEGRAL_IMAGE_INPUT_EXAMPLES_H
+
+#include <opencv2/opencv.hpp>
+
+cv::Mat integralImageInputExampleWuEtAl();
+
+#endif //ZEISS_TASK_INTEGRAL_IMAGE_INPUT_EXAMPLES_H
