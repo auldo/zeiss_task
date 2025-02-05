@@ -28,10 +28,14 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
         const auto threadCount{std::min(std::thread::hardware_concurrency() - 1, static_cast<unsigned int>(segmentationJobs.size()))};
         for (int i{0}; i < threadCount; ++i) {
             threads.emplace_back([&] {
-                while (!segmentationJobs.empty()) {
-
-                    // Takes a job from the queue
+                while (true) {
                     std::unique_lock l{segmentationJobMutex};
+                    if (segmentationJobs.empty()) {
+                        l.unlock();
+                        break;
+                    }
+                    // Takes a job from the queue
+
                     auto [x, y] = segmentationJobs.top();
                     segmentationJobs.pop();
                     l.unlock();
