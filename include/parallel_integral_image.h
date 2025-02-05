@@ -3,6 +3,6 @@
 
 #include <opencv2/opencv.hpp>
 
-void computeIIParallel(const cv::Mat& input);
+cv::Mat computeIIParallel(const cv::Mat& input);
 
 #endif //ZEISS_TASK_PARALLEL_INTEGRAL_IMAGE_H
