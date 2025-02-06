@@ -10,6 +10,7 @@ add_library(zeiss_integral_image
         src/integral_image_input_examples.cpp
         src/sequential_integral_image.cpp
         src/parallel_integral_image.cpp
+        src/gpu_integral_image.cpp
 )
 target_include_directories(zeiss_integral_image PUBLIC include)
 target_link_libraries(zeiss_integral_image ${OpenCV_LIBS})
