@@ -21,12 +21,12 @@ cv::Mat integralImageInputExampleWuEtAl() {
     return mat;
 }
 
-cv::Mat integralImageInputExampleLargeRandom() {
+cv::Mat integralImageInputExampleLargeRandom(int size) {
     std::random_device seeder;
     std::mt19937 engine(seeder());
-    std::uniform_int_distribution<int> dist(1, 9);
+    std::uniform_int_distribution dist(1, 9);
 
-    cv::Mat mat(2000, 2000, CV_16UC1);
+    cv::Mat mat(size, size, CV_16UC1);
     for(auto i{0}; i < mat.cols; ++i) {
         for(auto j{0}; j < mat.rows; ++j) {
             mat.at<uint16_t>(i, j) = dist(engine);

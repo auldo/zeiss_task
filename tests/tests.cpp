@@ -3,6 +3,14 @@
 #include "doctest.h"
 #include "integral_image.h"
 
+cv::Mat rescaleOutput(const cv::Mat& output) {
+    cv::Mat rescaled;
+    cv::normalize(output, rescaled, 0, 255, cv::NORM_MINMAX, CV_16UC1);
+    cv::Mat converted;
+    rescaled.convertTo(converted, CV_8UC1);
+    return converted;
+}
+
 void checkCorrectness(const cv::Mat& output) {
     //Check trivial output
     CHECK_EQ(output.at<uint16_t>(0, 0), 1);
@@ -115,6 +123,7 @@ TEST_CASE("check wu et al. example sequential correctness") {
     const cv::Mat example{integralImageInputExampleWuEtAl()};
     const cv::Mat output{computeIISequential(example)};
     checkCorrectness(output);
+    cv::imwrite("/Users/dominikaulinger/Desktop/small.png", rescaleOutput(output));
 }
 
 TEST_CASE("check wu et al. example parallel correctness") {

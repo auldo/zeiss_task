@@ -5,6 +5,6 @@
 #include <random>
 
 cv::Mat integralImageInputExampleWuEtAl();
-cv::Mat integralImageInputExampleLargeRandom();
+cv::Mat integralImageInputExampleLargeRandom(int size = 2000);
 
 #endif //ZEISS_TASK_INTEGRAL_IMAGE_INPUT_EXAMPLES_H
