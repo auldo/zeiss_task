@@ -62,7 +62,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
             thread.join();
     }
 
-    // Initialize containers for VBP and HBP
+    // Initialize containers for VBP
     cv::Mat verticalBorderPixels(segY, input.cols, CV_16UC1);
 
     {
@@ -89,6 +89,178 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
                     for (int y{0}; y < segY; ++y) {
                         verticalBorderPixels.at<uint16_t>(y, x) = output.at<uint16_t>(std::min(y * gridSize + gridSize - 1, input.rows - 1), x) + (y > 0 ? verticalBorderPixels.at<uint16_t>(y - 1, x) : 0);
                     }
+                }
+            });
+        }
+
+        // Join the threads again.
+        for (auto& thread : threads)
+            thread.join();
+    }
+
+    // Initialize containers for HBP
+    cv::Mat horizontalBorderPixels(input.rows, segX, CV_16UC1);
+
+    {
+        std::mutex hbpJobMutex{};
+        std::stack<int> hbpJobs;
+        for (int i{0}; i < input.rows; ++i) {
+            hbpJobs.emplace(i);
+        }
+
+        const auto threadCount{std::min(std::thread::hardware_concurrency() - 1, static_cast<unsigned int>(hbpJobs.size()))};
+        std::vector<std::thread> threads;
+
+        for (auto i{0}; i < threadCount; ++i) {
+            threads.emplace_back([&]() {
+                while (true) {
+                    std::unique_lock l{hbpJobMutex};
+                    if (hbpJobs.empty()) {
+                        l.unlock();
+                        break;
+                    }
+                    int y{hbpJobs.top()};
+                    hbpJobs.pop();
+                    l.unlock();
+
+                    for (int x{0}; x < segX; ++x) {
+                        horizontalBorderPixels.at<uint16_t>(y, x) = output.at<uint16_t>(y, std::min(x * gridSize + gridSize - 1, input.cols - 1)) + (x > 0 ? horizontalBorderPixels.at<uint16_t>(y, x - 1) : 0);
+                    }
+                }
+            });
+        }
+
+        // Join the threads again.
+        for (auto& thread : threads)
+            thread.join();
+    }
+
+    // Initialize container for CBor
+    cv::Mat rightBottomCorners(segY, segX, CV_16UC1);
+
+    {
+        std::mutex cborJobMutex{};
+        std::stack<int> cborJobs;
+        for (int i{0}; i < segX; ++i) {
+            cborJobs.emplace(i);
+        }
+
+        const auto threadCount{std::min(std::thread::hardware_concurrency() - 1, static_cast<unsigned int>(cborJobs.size()))};
+        std::vector<std::thread> threads;
+
+        for (auto i{0}; i < threadCount; ++i) {
+            threads.emplace_back([&]() {
+                while (true) {
+                    std::unique_lock l{cborJobMutex};
+                    if (cborJobs.empty()) {
+                        l.unlock();
+                        break;
+                    }
+                    int x{cborJobs.top()};
+                    cborJobs.pop();
+                    l.unlock();
+
+                    for (int y{0}; y < segY; ++y) {
+                        rightBottomCorners.at<uint16_t>(y, x) = horizontalBorderPixels.at<uint16_t>(std::min(y * gridSize + gridSize - 1, horizontalBorderPixels.rows - 1), x) + (y > 0 ? rightBottomCorners.at<uint16_t>(y - 1, x) : 0);
+                    }
+                }
+            });
+        }
+
+        // Join the threads again.
+        for (auto& thread : threads)
+            thread.join();
+    }
+
+    // Update HBP
+    {
+        std::mutex hbpUpdateJobMutex{};
+        std::stack<int> hbpUpdateJobs;
+        for (int i{0}; i < segX; ++i) {
+            hbpUpdateJobs.emplace(i);
+        }
+
+        const auto threadCount{std::min(std::thread::hardware_concurrency() - 1, static_cast<unsigned int>(hbpUpdateJobs.size()))};
+        std::vector<std::thread> threads;
+
+        for (auto i{0}; i < threadCount; ++i) {
+            threads.emplace_back([&]() {
+                while (true) {
+                    std::unique_lock l{hbpUpdateJobMutex};
+                    if (hbpUpdateJobs.empty()) {
+                        l.unlock();
+                        break;
+                    }
+                    int x{hbpUpdateJobs.top()};
+                    hbpUpdateJobs.pop();
+                    l.unlock();
+
+                    for (int y{gridSize}; y < horizontalBorderPixels.rows; ++y) {
+                        horizontalBorderPixels.at<uint16_t>(y, x) += rightBottomCorners.at<uint16_t>(y / gridSize - 1, x);
+                    }
+                }
+            });
+        }
+
+        // Join the threads again.
+        for (auto& thread : threads)
+            thread.join();
+    }
+
+    // Global update
+    {
+        std::mutex segmentationJobMutex;
+        std::stack<std::pair<int, int>> segmentationJobs;
+        for (int rowIndex{0}; rowIndex < segY; ++rowIndex) {
+            for (int colIndex{0}; colIndex < segX; ++colIndex) {
+                segmentationJobs.emplace(rowIndex * gridSize, colIndex * gridSize);
+            }
+        }
+
+        const auto threadCount{std::min(std::thread::hardware_concurrency() - 1, static_cast<unsigned int>(segmentationJobs.size()))};
+        std::vector<std::thread> threads;
+
+        for (auto i{0}; i < threadCount; ++i) {
+            threads.emplace_back([&]() {
+                while (true) {
+                    std::unique_lock l{segmentationJobMutex};
+                    if (segmentationJobs.empty()) {
+                        l.unlock();
+                        break;
+                    }
+                    const auto [x, y]{segmentationJobs.top()};
+                    segmentationJobs.pop();
+                    l.unlock();
+
+                    const int cols = std::min(output.cols, x + gridSize);
+                    const int rows = std::min(output.rows, y + gridSize);
+
+                    if (y == 0 && x == 0)
+                        continue;
+
+                    if (y == 0) {
+                        for (int r{y}; r < rows; ++r) {
+                            for (int c{x}; c < cols; ++c) {
+                                output.at<uint16_t>(r, c) += horizontalBorderPixels.at<uint16_t>(r, c / gridSize - 1);
+                            }
+                        }
+                        continue;
+                    }
+
+                    if (x == 0) {
+                        for (int r{y}; r < rows; ++r) {
+                            for (int c{x}; c < cols; ++c) {
+                                output.at<uint16_t>(r, c) += verticalBorderPixels.at<uint16_t>(r / gridSize - 1, c);
+                            }
+                        }
+                        continue;
+                    }
+
+                    for (int r{y}; r < rows; ++r) {
+                            for (int c{x}; c < cols; ++c) {
+                                output.at<uint16_t>(r, c) += verticalBorderPixels.at<uint16_t>(r / gridSize - 1, c) + horizontalBorderPixels.at<uint16_t>(r, c / gridSize - 1);
+                            }
+                        }
                 }
             });
         }

@@ -118,8 +118,10 @@ TEST_CASE("check wu et al. example sequential correctness") {
 }
 
 TEST_CASE("check wu et al. example parallel correctness") {
+    std::cout << "Number of cores: " << std::thread::hardware_concurrency() << std::endl;
     const cv::Mat example{integralImageInputExampleWuEtAl()};
-    const cv::Mat output{computeIIParallel(example)};
-    std::cout << output << std::endl;
-    ///checkCorrectness(output);
+    for (int i{1}; i <= 9; ++i) {
+        const cv::Mat output{computeIIParallel(example, i)};
+        checkCorrectness(output);
+    }
 }
