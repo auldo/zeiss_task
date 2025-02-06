@@ -3,7 +3,7 @@
 cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
 
     // Initialize output mat with same size as input mat
-    cv::Mat output(input.rows, input.cols, CV_16UC1);
+    cv::Mat output(input.rows, input.cols, II_CONST_CV_TYPE);
 
     // Calculate x and y direction counts for the segmentation count
     // Avoid failure on odd grid size
@@ -48,9 +48,9 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
                     for(int r{y}; r < rows; ++r) {
                         unsigned int lastIIValue{0};
                         for(int c{x}; c < cols; ++c) {
-                            cumulativeRowSums.at(c) += input.at<uint16_t>(r, c);
+                            cumulativeRowSums.at(c) += input.at<II_CONST_COMP_TYPE>(r, c);
                             lastIIValue = cumulativeRowSums.at(c) + lastIIValue;
-                            output.at<uint16_t>(r, c) = lastIIValue;
+                            output.at<II_CONST_COMP_TYPE>(r, c) = lastIIValue;
                         }
                     }
                 }
@@ -63,7 +63,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
     }
 
     // Initialize containers for VBP
-    cv::Mat verticalBorderPixels(segY, input.cols, CV_16UC1);
+    cv::Mat verticalBorderPixels(segY, input.cols, II_CONST_CV_TYPE);
 
     {
         std::mutex vbpJobMutex{};
@@ -87,7 +87,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
                     vbpJobs.pop();
                     l.unlock();
                     for (int y{0}; y < segY; ++y) {
-                        verticalBorderPixels.at<uint16_t>(y, x) = output.at<uint16_t>(std::min(y * gridSize + gridSize - 1, input.rows - 1), x) + (y > 0 ? verticalBorderPixels.at<uint16_t>(y - 1, x) : 0);
+                        verticalBorderPixels.at<II_CONST_COMP_TYPE>(y, x) = output.at<II_CONST_COMP_TYPE>(std::min(y * gridSize + gridSize - 1, input.rows - 1), x) + (y > 0 ? verticalBorderPixels.at<II_CONST_COMP_TYPE>(y - 1, x) : 0);
                     }
                 }
             });
@@ -99,7 +99,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
     }
 
     // Initialize containers for HBP
-    cv::Mat horizontalBorderPixels(input.rows, segX, CV_16UC1);
+    cv::Mat horizontalBorderPixels(input.rows, segX, II_CONST_CV_TYPE);
 
     {
         std::mutex hbpJobMutex{};
@@ -124,7 +124,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
                     l.unlock();
 
                     for (int x{0}; x < segX; ++x) {
-                        horizontalBorderPixels.at<uint16_t>(y, x) = output.at<uint16_t>(y, std::min(x * gridSize + gridSize - 1, input.cols - 1)) + (x > 0 ? horizontalBorderPixels.at<uint16_t>(y, x - 1) : 0);
+                        horizontalBorderPixels.at<II_CONST_COMP_TYPE>(y, x) = output.at<II_CONST_COMP_TYPE>(y, std::min(x * gridSize + gridSize - 1, input.cols - 1)) + (x > 0 ? horizontalBorderPixels.at<II_CONST_COMP_TYPE>(y, x - 1) : 0);
                     }
                 }
             });
@@ -136,7 +136,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
     }
 
     // Initialize container for CBor
-    cv::Mat rightBottomCorners(segY, segX, CV_16UC1);
+    cv::Mat rightBottomCorners(segY, segX, II_CONST_CV_TYPE);
 
     {
         std::mutex cborJobMutex{};
@@ -161,7 +161,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
                     l.unlock();
 
                     for (int y{0}; y < segY; ++y) {
-                        rightBottomCorners.at<uint16_t>(y, x) = horizontalBorderPixels.at<uint16_t>(std::min(y * gridSize + gridSize - 1, horizontalBorderPixels.rows - 1), x) + (y > 0 ? rightBottomCorners.at<uint16_t>(y - 1, x) : 0);
+                        rightBottomCorners.at<II_CONST_COMP_TYPE>(y, x) = horizontalBorderPixels.at<II_CONST_COMP_TYPE>(std::min(y * gridSize + gridSize - 1, horizontalBorderPixels.rows - 1), x) + (y > 0 ? rightBottomCorners.at<II_CONST_COMP_TYPE>(y - 1, x) : 0);
                     }
                 }
             });
@@ -196,7 +196,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
                     l.unlock();
 
                     for (int y{gridSize}; y < horizontalBorderPixels.rows; ++y) {
-                        horizontalBorderPixels.at<uint16_t>(y, x) += rightBottomCorners.at<uint16_t>(y / gridSize - 1, x);
+                        horizontalBorderPixels.at<II_CONST_COMP_TYPE>(y, x) += rightBottomCorners.at<II_CONST_COMP_TYPE>(y / gridSize - 1, x);
                     }
                 }
             });
@@ -241,7 +241,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
                     if (y == 0) {
                         for (int r{y}; r < rows; ++r) {
                             for (int c{x}; c < cols; ++c) {
-                                output.at<uint16_t>(r, c) += horizontalBorderPixels.at<uint16_t>(r, c / gridSize - 1);
+                                output.at<II_CONST_COMP_TYPE>(r, c) += horizontalBorderPixels.at<II_CONST_COMP_TYPE>(r, c / gridSize - 1);
                             }
                         }
                         continue;
@@ -250,7 +250,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
                     if (x == 0) {
                         for (int r{y}; r < rows; ++r) {
                             for (int c{x}; c < cols; ++c) {
-                                output.at<uint16_t>(r, c) += verticalBorderPixels.at<uint16_t>(r / gridSize - 1, c);
+                                output.at<II_CONST_COMP_TYPE>(r, c) += verticalBorderPixels.at<II_CONST_COMP_TYPE>(r / gridSize - 1, c);
                             }
                         }
                         continue;
@@ -258,7 +258,7 @@ cv::Mat computeIIParallel(const cv::Mat& input, int gridSize) {
 
                     for (int r{y}; r < rows; ++r) {
                             for (int c{x}; c < cols; ++c) {
-                                output.at<uint16_t>(r, c) += verticalBorderPixels.at<uint16_t>(r / gridSize - 1, c) + horizontalBorderPixels.at<uint16_t>(r, c / gridSize - 1);
+                                output.at<II_CONST_COMP_TYPE>(r, c) += verticalBorderPixels.at<II_CONST_COMP_TYPE>(r / gridSize - 1, c) + horizontalBorderPixels.at<II_CONST_COMP_TYPE>(r, c / gridSize - 1);
                             }
                         }
                 }

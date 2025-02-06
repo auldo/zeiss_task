@@ -4,7 +4,9 @@
 #include <opencv2/opencv.hpp>
 #include <random>
 
+#include "integral_image_constants.h"
+
 cv::Mat integralImageInputExampleWuEtAl();
-cv::Mat integralImageInputExampleLargeRandom(int size = 2000);
+cv::Mat integralImageInputExampleLargeRandom(int size = 2000, std::optional<int> fill = std::nullopt);
 
 #endif //ZEISS_TASK_INTEGRAL_IMAGE_INPUT_EXAMPLES_H

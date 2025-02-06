@@ -7,7 +7,6 @@ find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 add_library(zeiss_integral_image
-        src/integral_image.cpp
         src/integral_image_input_examples.cpp
         src/sequential_integral_image.cpp
         src/parallel_integral_image.cpp

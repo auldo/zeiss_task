@@ -4,5 +4,6 @@
 #include "integral_image_input_examples.h"
 #include "sequential_integral_image.h"
 #include "parallel_integral_image.h"
+#include "integral_image_constants.h"
 
 #endif //ZEISS_TASK_INTEGRAL_IMAGE_H
